@@ -1,0 +1,21 @@
+{
+    "name": "mtgox-websocket-client",
+    "version": "0.0.1",
+    "description": "A websocket client for MtGox",
+    "keywords": ["mtgox", "websocket", "bitcoin"],
+    "homepage": "http://github.com/dlanod/node-mtgox-websocket-client",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/dlanod/node-mtgox-websocket-client"
+    },
+    "author": "Donald Ness <donald.ness@gmail.com>",
+    "main": "./index.js",
+    "engines": {
+        "node": ">= v0.4.12"
+    },
+    "dependencies": {
+        "websocket-client": "1.0.0",
+        "colors": "0.5.1",
+        "datetime": "0.0.3"
+    }
+}
