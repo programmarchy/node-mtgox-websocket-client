@@ -5,12 +5,14 @@ var mtgox = require('./mtgox');
 
 var lastTradePrice = -1;
 var lastTickerPrice = -1;
+var lastTickerVolume = -1;
 var client = mtgox.connect();
 
 client.on('open', function() {
-  // Unsubscribe from auto-subscribed channels here
-  client.unsubscribe(mtgox.getChannel('depth').key);
-  //client.unsubscribe(mtgox.getChannel('ticker').key);
+  // Good place to unsubscribe from unwanted channels
+  // client.unsubscribe(mtgox.getChannel('trade').key);
+  // client.unsubscribe(mtgox.getChannel('depth').key);
+  // client.unsubscribe(mtgox.getChannel('ticker').key);
 });
 
 client.on('subscribe', function(message) {
@@ -33,18 +35,22 @@ client.on('depth', function(message) {
 client.on('ticker', function(message) {
   renderTickerMessage(message, lastTickerPrice);
   lastTickerPrice = message.ticker.last;
+  lastTickerVolume = message.ticker.vol;
 });
 
 process.on('exit', function() {
+  console.log('Goodbye!'.bold);
   client.close();
 });
 
 var renderSubscribeMessage = function(message) {
-  console.log(getTimeFormat(), 'Subscribed to channel: '.green, getChannelFormat(message));
+  var format = 'Subscribed to channel:'.green;
+  console.log(getTimeFormat(), format, getChannelFormat(message));
 };
 
 var renderUnsubscribeMessage = function(message) {
-  console.log(getTimeFormat(), 'Unsubscribed from channel: '.red, getChannelFormat(message));
+  var format = 'Unsubscribed from channel:'.red;
+  console.log(getTimeFormat(), format, getChannelFormat(message));
 };
 
 var renderTradeMessage = function(message, lastPrice) {
@@ -56,11 +62,38 @@ var renderTickerMessage = function(message, lastPrice) {
 };
 
 var renderDepthMessage = function(message) {
-  console.log(message);
+  console.log(getTimeFormat(), getDepthFormat(message.depth));
+};
+
+var getDepthFormat = function(depth) {
+  var format = '';
+
+  if (depth.volume < 0) {
+    format += '+ '.grey;
+  }
+  else {
+    format += '- '.grey;
+  };
+
+  if (depth.type_str == 'ask') {
+    format += 'Ask: '.grey.bold;
+  }
+  else if (depth.type_str = 'bid') {
+    format += 'Bid: '.grey.bold;
+  }
+
+  var amount = Math.abs(depth.volume);
+  var price = Math.abs(depth.price);
+
+  format += (amount + ' ' + depth.item).yellow + ' @ ';
+  format += getPriceFormat(price, price, depth.currency);
+
+  return format;
 };
 
 var getTickerFormat = function(ticker, lastPrice) {
-  var format = '` ';
+  var format = '> ';
+
   var last = 'Last: '.bold;
   var high = 'High: '.bold;
   var low = 'Low: '.bold;
@@ -78,8 +111,6 @@ var getTickerFormat = function(ticker, lastPrice) {
 
 var getTradeFormat = function(trade, lastPrice) {
   var format = '$ ';
-  var amount = trade.amount + ' ' + trade.item;
-  var price = trade.price + ' ' + trade.price_currency;
 
   if (trade.trade_type == 'ask') {
     format += 'Ask: '.bold;
@@ -88,7 +119,7 @@ var getTradeFormat = function(trade, lastPrice) {
     format += 'Bid: '.bold;
   }
 
-  format += amount.yellow + ' @ ';
+  format += (trade.amount + ' ' + trade.item).yellow + ' @ ';
   format += getPriceFormat(trade.price, lastPrice, trade.price_currency);
 
   return format;
@@ -106,12 +137,11 @@ var getTimeFormat = function() {
 };
 
 var getPriceFormat = function(currentPrice, lastPrice, currency) {
-  var price = currentPrice + (currency ? ' ' + currency : '');
+  var format = currentPrice + (currency ? ' ' + currency : '');
   if (lastPrice < 0) {
-    return price;
+    return format;
   }
 
-  var format = '';
   var delta = lastPrice - currentPrice;
   var percent = (lastPrice > 0) ? (delta / lastPrice) * 100 : 100;
   var round = function(n) {
@@ -119,13 +149,10 @@ var getPriceFormat = function(currentPrice, lastPrice, currency) {
   };
 
   if (delta > 0) {
-    format += price + (' \u25b2 +' + round(delta) + ' +' + round(percent) + '%').green;
+    format += (' \u25b2 +' + round(delta) + ' +' + round(percent) + '%').green;
   }
   else if (delta < 0) {
-    format += price + (' \u25bc -' + round(delta) + ' -' +round( percent) + '%').red;
-  }
-  else {
-    format += price;
+    format += (' \u25bc -' + round(delta) + ' -' +round( percent) + '%').red;
   }
 
   return format;
